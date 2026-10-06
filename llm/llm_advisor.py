@@ -151,6 +151,8 @@ class LLMAdvisor:
             or not self.base_url
         )
         self._llm = None  # LangChain ChatOpenAI 实例(惰性初始化)
+        self._tuning_chain = None   # 调优链路缓存
+        self._report_chain = None   # 报告链路缓存
 
     # ==================== 对外主接口 ====================
 
@@ -231,7 +233,7 @@ class LLMAdvisor:
         """惰性初始化 LangChain ChatOpenAI 模型
 
         使用 langchain-openai 的 ChatOpenAI 封装，统一对接 OpenAI 兼容接口。
-        DeepSeek 思考模式通过 model_kwargs 透传 extra_body。
+        DeepSeek 思考模式通过 extra_body 参数透传。
         """
         if self._llm is None:
             try:
@@ -268,23 +270,27 @@ class LLMAdvisor:
         注意：SYSTEM_PROMPT 含 JSON 花括号，必须用 SystemMessage 直接传入
         （不做模板格式化），否则花括号会被误判为模板变量。
         """
-        from langchain_core.messages import SystemMessage
-        from langchain_core.prompts import ChatPromptTemplate
+        if self._tuning_chain is None:
+            from langchain_core.messages import SystemMessage
+            from langchain_core.prompts import ChatPromptTemplate
 
-        prompt = ChatPromptTemplate.from_messages([
-            SystemMessage(content=SYSTEM_PROMPT),
-            ("human", "{user_prompt}"),
-        ])
-        return prompt | self._get_llm()
+            prompt = ChatPromptTemplate.from_messages([
+                SystemMessage(content=SYSTEM_PROMPT),
+                ("human", "{user_prompt}"),
+            ])
+            self._tuning_chain = prompt | self._get_llm()
+        return self._tuning_chain
 
     def _build_report_chain(self):
         """构建报告生成链路：仅 human(实验数据) -> LLM(无 system 约束)"""
-        from langchain_core.prompts import ChatPromptTemplate
+        if self._report_chain is None:
+            from langchain_core.prompts import ChatPromptTemplate
 
-        prompt = ChatPromptTemplate.from_messages([
-            ("human", "{user_prompt}"),
-        ])
-        return prompt | self._get_llm()
+            prompt = ChatPromptTemplate.from_messages([
+                ("human", "{user_prompt}"),
+            ])
+            self._report_chain = prompt | self._get_llm()
+        return self._report_chain
 
     def _call_llm(self, user_prompt, system=True):
         """调用大模型，返回文本响应
