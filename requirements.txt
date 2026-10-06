@@ -1,0 +1,13 @@
+torch>=2.0.0
+torchvision>=0.15.0
+opencv-python>=4.8.0
+numpy>=1.24.0
+matplotlib>=3.7.0
+pillow>=9.5.0
+tqdm>=4.65.0
+scipy>=1.10.0
+# 大模型接入(可选：无 Key 时自动降级本地规则模式)
+langchain>=0.2.0
+langchain-openai>=0.1.0
+langchain-community>=0.2.0
+openai>=1.0.0
